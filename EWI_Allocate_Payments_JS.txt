@@ -1,0 +1,1377 @@
+({
+    doInit : function(component, event, helper) {
+        component.set("v.selectedRecordType",'EWI Inbound Report');
+         component.set("v.checkedCount",0);
+        var action = component.get("c.returnInboundReports");
+
+        var splitList = component.get("v.splitList");
+        splitList.length =splitList.length+1;
+        component.set("v.splitList",splitList);
+
+      	action.setParams({
+             amount : 0,
+             isFilter : false,
+             filterType : '',
+             startCreatedDate : null,
+             endCreatedDate : null,
+             selectedRecordType : component.get("v.selectedRecordType")
+         });
+        
+        action.setCallback(this, function(response) {
+            component.set("v.spinner",true);
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                
+                component.set("v.inboundReportsList" ,result);
+                component.set("v.spinner",false);
+                
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                // alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            // component.set("v.spinner",false);
+                            
+                            //  alert("Error message: " +  errors[0].message);
+                        }
+                    } else {
+                        helper.showToast('Error!','Unknown error','error');
+                        //  component.set("v.spinner",false);
+                        
+                        //  alert("Unknown error");
+                    }
+                }
+        });
+        
+       /* var actionPermission = component.get("c.isPermissionSet");
+        actionPermission.setCallback(this,function(response){
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                if(result == true){
+                    component.find("selectRecordType").set("v.value", 'EWI Inbound Report');
+                    component.set("v.selectedRecordType",component.find('selectRecordType').get('v.value'));
+                }
+                action.setParams({
+                    amount : 0,
+                    isFilter : false,
+                    filterType : '',
+                    startCreatedDate : null,
+                    endCreatedDate : null,
+                    selectedRecordType : component.get("v.selectedRecordType")
+                });
+                $A.enqueueAction(action);
+            }
+        });
+        $A.enqueueAction(actionPermission); */
+        $A.enqueueAction(action);
+        
+    },
+    SearchPopup : function(component, event, helper) { 
+        var idx = event.target.id;
+        component.set("v.isModalOpenforRET",true);
+       component.set("v.inboundReportIdforSearch",idx);
+         var inboundReportId = component.get('v.inboundReportIdforSearch');
+        component.set("v.spinnerInModal",true);
+        var action = component.get("c.searchInstallmentDefault");
+        action.setParams({InbndRptId: inboundReportId});
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                 console.log('====result====='+result);
+                  if(true){
+                
+                	component.set("v.installmentList",result.installmentList);
+                	component.set("v.payee",result.payee);
+              
+                    component.set("v.isSearchResultAvailable",false);
+                    component.set("v.spinnerInModal",false);
+                }else{
+                    component.set("v.spinnerInModal",false); 
+                    var toastEvent = $A.get("e.force:showToast");
+                    toastEvent.setParams({
+                        "title": "Error",
+                        "message": "No default Matching records found",
+                        "type": "error"
+                    });
+                    toastEvent.fire();
+                    
+                }
+                 
+                console.log('========='+result);
+            }
+           
+               
+        });
+        
+        $A.enqueueAction(action);
+      
+      
+    },
+    Search : function(component, event, helper) { 
+        component.set("v.spinnerInModal",true);
+       var searchText = component.get('v.searchText');
+        var inboundReportId = component.get('v.inboundReportIdforSearch');
+        
+         component.set('v.columns', [
+            {label: 'Installment Id', fieldName: 'Id', type: 'text'}
+        ]);
+       
+		var expdate = component.find("expdate").get("v.value");      
+         //alert(inboundReportId);
+        var action = component.get("c.searchInstallment");
+        action.setParams({searchText: expdate,
+                          InbndRptId: inboundReportId});
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                
+                component.set("v.installmentList",result.installmentList);
+                component.set("v.payee",result.payee);
+                component.set("v.spinnerInModal",false);                
+                /*if(result.length>0){
+                    component.set("v.isSearchResultAvailable",true);
+                    component.set("v.spinnerInModal",false);
+                }else{
+                    component.set("v.spinnerInModal",false); 
+                    var toastEvent = $A.get("e.force:showToast");
+                    toastEvent.setParams({
+                        "title": "Error",
+                        "message": "No Matching records found",
+                        "type": "error"
+                    });
+                    toastEvent.fire();
+                }*/
+                 
+                console.log('========='+result);
+            }
+           
+               
+        });
+        
+        $A.enqueueAction(action);
+        
+    },
+    closeModelforRET: function(component, event, helper) {
+      // Set isModalOpen attribute to false  
+      component.set("v.isModalOpenforRET", false);
+   },
+  
+   submitDetails: function(component, event, helper) {
+      component.set("v.spinnerInModal",true);
+       component.set("v.spinner",true);
+       component.set("v.Likedisable",true);
+
+      var idx = event.target.id;
+      var inboundReportId = component.get('v.inboundReportIdforSearch');
+      var action = component.get("c.processInstallmentReversal");
+        action.setParams({
+            InstallmentId:idx,
+            InbndRptId: inboundReportId
+        });
+        
+        action.setCallback(this, function(response) {
+            component.set("v.spinner",true);
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+               component.set("v.spinnerInModal",false);
+                component.set("v.isModalOpenforRET",false);
+               var a = component.get("c.onChangeRecordType");
+                 $A.enqueueAction(a);
+                component.set("v.spinner",false);
+            }else{
+                component.set("v.spinner",false);
+            }
+           
+               
+        });
+        
+        $A.enqueueAction(action);
+   },
+    unallocate : function(component, event, helper) { 
+        
+        var idx = event.target.id;
+        
+        component.set("v.spinner",true);
+        var inboundReports = component.get("v.inboundReportsList");
+        var showError = false;
+        if(idx == undefined || idx == ''){
+            for (var element of inboundReports) {
+                if(element.isSelected && element.objInboundReport.Matched_Colour__c == 'Red'){
+                    showError = true;   
+                    break;
+                }
+                
+            }
+        }
+        
+        if(showError){
+            component.set("v.spinner",false);
+            helper.showToast('Error!','Red Payments are already unallocated','error');
+            
+            //  alert('Red Payments are already unallocated');
+            return;
+        }
+        //alert(JSON.stringify(inboundReports));
+        var action = component.get("c.moveToRed");
+        action.setParams({
+            wrapperList : inboundReports,
+            Id : idx,
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType")
+        });
+        
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                component.set("v.spinner",false);
+                component.set("v.inboundReportsList" ,result);
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                //alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            
+                            //  alert("Error message: " +  errors[0].message);
+                        }
+                    } else {
+                        helper.showToast('Error!','Unknown error','error');
+                        //  alert("Unknown error");
+                    }
+                }
+        });
+        
+        $A.enqueueAction(action);
+        
+    },
+
+    unallocateGray : function(component, event, helper) { 
+        
+        var idx = event.target.id;
+        
+        component.set("v.spinner",true);
+        var inboundReports = component.get("v.inboundReportsList");
+        var showError = false;
+        if(idx == undefined || idx == ''){
+            for (var element of inboundReports) {
+                if(element.isSelected && element.objInboundReport.Matched_Colour__c == 'Gray'){
+                    showError = true;   
+                    break;
+                }
+                
+            }
+        }
+        
+        if(showError){
+            component.set("v.spinner",false);
+            helper.showToast('Error!','Gray Payments are already unallocated','error');
+            
+            //  alert('Red Payments are already unallocated');
+            return;
+        }
+        //alert(JSON.stringify(inboundReports));
+        var action = component.get("c.moveToGray");
+        action.setParams({
+            wrapperList : inboundReports,
+            Id : idx,
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType")
+        });
+        
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                component.set("v.spinner",false);
+                component.set("v.inboundReportsList" ,result);
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                //alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            
+                            //  alert("Error message: " +  errors[0].message);
+                        }
+                    } else {
+                        helper.showToast('Error!','Unknown error','error');
+                        //  alert("Unknown error");
+                    }
+                }
+        });
+        
+        $A.enqueueAction(action);
+        
+    },
+    
+    allocateInboundReportsJS : function(component, event, helper) { 
+        component.set("v.spinner",true);
+        
+        var idx = event.target.id;
+        
+        var inboundReports = component.get("v.inboundReportsList");
+        
+        var showError = false;
+        var showModel = false;
+        
+        for (var element of inboundReports) {
+            console.log('element.isSelected  => ' + element.isSelected );
+            console.log('idx => ' + idx);
+            console.log('element.objInboundReport.Id => ' + element.objInboundReport.Id);
+            console.log('element.objInboundReport.Amount__c => ' + element.objInboundReport.Amount__c);
+            //console.log('element.objInboundReport.Installment__r.Case__r.Amount_of_Disputed_Funds_Required__c  => ' + element.objInboundReport.Installment__r.Case__r.Amount_of_Disputed_Funds_Required__c );
+            console.log('element.objInboundReport.Matched_Colour__c => ' + element.objInboundReport.Matched_Colour__c);
+            var amountOfDisputedFundsRequired = 0;
+            if(element.objInboundReport.Installment__r != undefined && element.objInboundReport.Installment__r.Case__r != undefined){
+                console.log(element.objInboundReport.Id + ' does not have instalment or case');
+                //replaced Amount_of_Disputed_Funds_Required__c WITH Amount_of_Disputed_Funds_Remaining__c
+                amountOfDisputedFundsRequired = element.objInboundReport.Installment__r.Case__r.Amount_of_Disputed_Funds_Remaining__c;
+            }
+            if(element.isSelected && (element.objInboundReport.Matched_Colour__c == 'Red' || element.matchedColour == 'Blue')){
+                showError = true;   
+                break;
+            }
+            else if((element.objInboundReport.Matched_Colour__c == 'Amber') && (element.isSelected || idx == element.objInboundReport.Id) && 
+                    (element.objInboundReport.Amount__c > amountOfDisputedFundsRequired)){
+                console.log('showModel true');
+                showModel = true;
+                break;
+            }
+            
+        }
+        
+        if(showError){
+            component.set("v.spinner",false);
+            
+            helper.showToast('Error!','Payments in Red/Blue can not be allocated','error');
+            //  alert('Payments in Red can not be allocated');
+            return;
+        }
+        
+        if(showModel){
+            component.set("v.isAllocateConfirmModelOpen", true);
+            component.set("v.currentId",idx);
+            component.set("v.spinner",false);
+            return;
+        }
+        
+        //var action = component.get("c.onAllocateConfirm");
+        //$A.enqueueAction(action);
+        
+            console.log('no error calling allocate');
+        var action = component.get("c.allocateInboundReports");
+        
+        action.setParams({
+            wrapperList : inboundReports,
+            Id : idx,
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType")
+        });
+        
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+             console.log('state '+state);
+            
+            if (state === "SUCCESS") {
+                component.set("v.spinner",false);
+                var result =response.getReturnValue();
+                
+              //  alert(result);
+                if(result == null ){
+                //     console.log(' error ');
+                   
+                      helper.showToast('Error!','Your previous allocation is already in progress, please allocate other deposits after sometime','error');
+                	   $A.get('e.force:refreshView').fire();
+                }else{
+                     console.log('no error ');
+                     //$A.get('e.force:refreshView').fire();
+                     component.set("v.inboundReportsList" ,result);
+                }
+               
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                // alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            
+                            // alert("Error message: " +  errors[0].message);
+                        }
+                    } else {
+                        helper.showToast('Error!','Unknown error','error');
+                        //   alert("Unknown error");
+                    }
+                }
+        });
+        
+        $A.enqueueAction(action);
+    
+        
+    },
+    
+    closeAllocationConfirmModel: function(component, event, helper) {
+        // Set isAllocateConfirmModelOpen attribute to false  
+        component.set("v.isAllocateConfirmModelOpen", false);
+        component.set("v.spinner",false);
+    },
+    onAllocateConfirm : function(component, event, helper){
+        // Set isAllocateConfirmModelOpen attribute to true  
+        component.set("v.spinner",true);
+        component.set("v.isAllocateConfirmModelOpen", false);
+        var idx = component.get("v.currentId");
+        var inboundReports = component.get("v.inboundReportsList");
+        console.log('allocate inboundReports>>'+JSON.stringify(inboundReports));
+        console.log('allocate id>>'+idx);
+        var action = component.get("c.allocateInboundReports");
+        action.setParams({
+            wrapperList : inboundReports,
+            Id : idx,
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType")
+        });
+        
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+            console.log('state '+state);
+            
+            if (state === "SUCCESS") {
+                //component.set("v.isAllocateConfirmModelOpen", false);
+                component.set("v.spinner",false);
+                var result =response.getReturnValue();
+                
+                //  alert(result);
+                if(result == null ){
+                    //     console.log(' error ');
+                    
+                    helper.showToast('Error!','Your previous allocation is already in progress, please allocate other deposits after sometime','error');
+                    $A.get('e.force:refreshView').fire();
+                }else{
+                    console.log('no error ');
+                    //$A.get('e.force:refreshView').fire();
+                    component.set("v.inboundReportsList" ,result);
+                }
+                
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                // alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            
+                            // alert("Error message: " +  errors[0].message);
+                        }
+                    } else {
+                        helper.showToast('Error!','Unknown error','error');
+                        //   alert("Unknown error");
+                    }
+                }
+        });
+        
+        $A.enqueueAction(action);
+    },
+    
+    // function automatic called by aura:waiting event  
+    showSpinner: function(component, event, helper) {
+        // make Spinner attribute true for displaying loading spinner 
+        
+        component.set("v.spinner", true); 
+        
+    },
+    
+    // function automatic called by aura:doneWaiting event 
+    hideSpinner : function(component,event,helper){
+        // make Spinner attribute to false for hiding loading spinner  
+        component.set("v.spinner", false); 
+    },
+    onCheck: function(component,event,helper){
+   // component.set("v.disable",false);
+           var count = component.get("v.checkedCount");
+        if(event.getSource().get("v.value") == true){
+         component.set("v.checkedCount",count+1);
+
+             component.set("v.disable",false);
+        } else{
+            var c = count-1;
+             component.set("v.checkedCount",c);
+            if(c==0){
+                component.set("v.disable",true);
+            }
+        }
+    },
+
+    selectAllGreen : function(component, event, helper) { 
+        
+        var count = 0;
+        var inboundReportsList = component.get("v.inboundReportsList");
+        var isGreen = false;
+        for (var element of inboundReportsList) {
+            if(element.matchedColour == 'Green'){
+                element.isSelected = true;
+                isGreen = true;
+                count++;
+            }else{
+                element.isSelected = false;
+            }
+            
+        }
+        if(!isGreen){
+            helper.showToast('Error!',"Error message: " +  'No green payments found','error');
+            return ;
+        }
+        component.set("v.inboundReportsList" ,inboundReportsList);
+        component.set("v.disable",false);
+        component.set("v.checkedCount",count);
+        
+        
+    },
+
+    selectAllAmber : function(component, event, helper) { 
+        
+        var count = 0;
+        var inboundReportsList = component.get("v.inboundReportsList");
+        var isAmber = false;
+        for (var element of inboundReportsList) {
+            if(element.matchedColour == 'Amber'){
+                element.isSelected = true;
+                isAmber = true;
+                count++;
+            }else{
+                element.isSelected = false;
+            }
+            
+        }
+        if(!isAmber){
+            helper.showToast('Error!',"Error message: " +  'No amber payments found','error');
+            return ;
+        }
+        component.set("v.inboundReportsList" ,inboundReportsList);
+        component.set("v.disable",false);
+        component.set("v.checkedCount",count);
+        
+        
+    },
+
+    deselectAll : function(component, event, helper) { 
+        
+        var inboundReportsList = component.get("v.inboundReportsList");
+        for (var element of inboundReportsList) {
+            
+            element.isSelected = false;
+            
+        }
+        
+        component.set("v.inboundReportsList" ,inboundReportsList);
+        component.set("v.disable",true);
+        component.set("v.checkedCount",0);
+        
+        
+    },
+    refund : function(component, event, helper) { 
+        
+        var idx = component.get("v.refundId");
+
+        var bankType = component.get("v.bankType");
+        var nameOnAccount = component.get("v.nameOnAccount");
+        var accountNumber = component.get("v.accountNumber");
+        var sortCode = component.get("v.sortCode");
+        var bankName = component.get("v.bankName");
+            
+        var nameOntheAccount = component.get("v.nameOntheAccount");
+        var intBankName = component.get("v.intBankName");
+        var BIC = component.get("v.BIC");
+        var swiftCode = component.get("v.swiftCode");
+        var IBAN = component.get("v.IBAN");
+        var homeAddress = component.get("v.homeAddress");
+        
+        if(bankType == 'UK'){
+            
+            if(nameOnAccount == undefined || nameOnAccount == '' || nameOnAccount == null){
+                helper.showToast('Error!','Please enter the account holder name','error');
+                return;
+            }
+            if(accountNumber == undefined || accountNumber == '' || accountNumber == null){
+                helper.showToast('Error!','Please enter the account number','error');
+                return;
+            }
+            if(sortCode == undefined || sortCode == '' || sortCode == null){
+                helper.showToast('Error!','Please enter the sort code','error');
+                return;
+            }
+            if(bankName == undefined || bankName == '' || bankName == null){
+                helper.showToast('Error!','Please enter the bank name','error');
+                return;
+            }
+            if(accountNumber.length != 8){
+                helper.showToast('Error!','Bank account number should be 8 digits','error');
+                return;
+            }
+            if(sortCode.length != 6){
+                helper.showToast('Error!','Sort code should be 6 digits','error');
+                return;
+            }
+            if(!isNaN(nameOnAccount)){
+                helper.showToast('Error!','Account holder name can not be whole numeric','error');
+                return;
+            }
+            
+            
+        }else{
+            if(nameOntheAccount == undefined || nameOntheAccount == '' || nameOntheAccount == null){
+                helper.showToast('Error!','Please enter the account holder name','error');
+                return;
+            }
+            if(intBankName == undefined || intBankName == '' || intBankName == null){
+                helper.showToast('Error!','Please enter the bank name','error');
+                return;
+            }
+            if(IBAN == undefined || IBAN == '' || IBAN == null){
+                helper.showToast('Error!','Please enter the IBAN','error');
+                return;
+            }
+            if(!isNaN(nameOntheAccount)){
+                helper.showToast('Error!','Account holder name can not be whole numeric','error');
+                return;
+            }
+        }
+        
+        component.set("v.spinner",true);
+        var inboundReports = component.get("v.inboundReportsList");
+        
+		
+        var action = component.get("c.refundPayment");
+        action.setParams({
+            wrapperList : inboundReports,
+            Id : idx,
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType"),
+            
+            bankType : component.get("v.bankType"),
+            nameOnAccount : component.get("v.nameOnAccount"),
+            accountNumber : component.get("v.accountNumber"),
+            sortCode : component.get("v.sortCode"),
+            bankName : component.get("v.bankName"),
+            
+            nameOntheAccount : component.get("v.nameOntheAccount"),
+            intBankName : component.get("v.intBankName"),
+            BIC : component.get("v.BIC"),
+            swiftCode : component.get("v.swiftCode"),
+            IBAN : component.get("v.IBAN"),
+            homeAddress : component.get("v.homeAddress")
+            
+        });
+
+        
+        action.setCallback(this, function(response) {
+            var state = response.getState();
+            component.set("v.spinner",true);
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                component.set("v.spinner",false);
+                component.set("v.inboundReportsList" ,result);
+                component.set("v.isModalRefund", false);
+        
+                component.set("v.bankType", "");
+                component.set("v.nameOnAccount", "");
+                component.set("v.accountNumber", "");
+                component.set("v.sortCode", "");
+                component.set("v.bankName", "");
+                component.set("v.nameOntheAccount", "");
+                component.set("v.intBankName", "");
+                component.set("v.BIC", "");
+                component.set("v.swiftCode", "");
+                component.set("v.IBAN", "");
+                component.set("v.homeAddress", "");
+                component.set("v.refundId", "");
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                //alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            component.set("v.spinner",false);
+                             //alert("Error message: " +  errors[0].message);
+                            helper.showToast('Error!',errors[0].message,'error');
+                        }
+                    } else {
+                        component.set("v.spinner",false);
+                        helper.showToast('Error!','Unknown error','error');
+                        //  alert("Unknown error");
+                        
+                    }
+                }
+        });
+        
+        $A.enqueueAction(action);
+        
+    },
+
+    openModel: function(component, event, helper) {
+        // Set isModalOpen attribute to true
+        var mainReportInstance = component.get("v.mainReportInstance");
+        var idx = event.target.id;
+        var inboundReportsList = component.get("v.inboundReportsList");
+        for (var element of inboundReportsList) {
+            
+            if(element.objInboundReport.Id == idx){
+                
+                mainReportInstance = element;
+                break;
+            }
+            
+        }
+        
+        component.set("v.reasonForFlag","");
+        component.set("v.reasonForFlagSpecified","");
+        component.set("v.isModalOpen", true);
+        component.set("v.selectReason", true);
+        component.set("v.installmentId", idx);
+
+        
+        var splitList = [];
+        splitList.length =splitList.length+1;
+        component.set("v.splitList",splitList);
+        component.set("v.mainReportInstance",mainReportInstance);
+        
+    },
+    
+    closeModel: function(component, event, helper) {
+        // Set isModalOpen attribute to false  
+        var splitList = [];
+        component.set("v.isModalOpen", false);
+        component.set("v.spinner",false);
+        component.set("v.splitList",splitList);
+    },
+    addSplit: function(component, event, helper) {
+        
+        var splitList = component.get("v.splitList");
+        var item = {
+                    'newAmount' :undefined,
+                    'reference1':'',
+                    'reference2':''}
+       splitList.push(item);
+
+        component.set("v.splitList",splitList);
+
+    },
+    removeSplit: function(component, event, helper) {
+        
+        var index = event.getSource().get("v.value");
+        
+        var splitList = component.get("v.splitList");
+        splitList.splice(index, 1);
+        component.set("v.splitList",splitList);
+    },
+
+    splitReport: function(component, event, helper) {
+        
+        var mainReportInstance = component.get("v.mainReportInstance");
+
+        var splitLists = component.get("v.splitList");
+
+        var totalSplit = 0;
+        
+        //use validations 
+
+        if(splitLists.length < 2){
+
+            helper.showToast('Error!','Minimum two rows are required for split','error');
+            return ;
+        }
+
+        for(var i = 0; i < splitLists.length; i++){
+
+            var element = splitLists[i]
+            if(element == undefined){
+                helper.showToast('Error!','Please enter all values','error');
+                return;
+            }
+            if((element.reference1 == undefined || element.reference1 == '' || element.newAmount == undefined)&&component.get("v.selectedRecordType")=='SDS Inbound Report'){
+                helper.showToast('Error!','Please enter all values','error');
+                return;
+            }else if((element.reference1 == undefined || element.reference1 == '' || element.reference2 == undefined || element.reference2 == '' || element.newAmount == undefined)&&component.get("v.selectedRecordType")=='EWI Inbound Report'){
+                helper.showToast('Error!','Please enter all values','error');
+                return;
+            }
+            else if(element.newAmount <= 0){
+                helper.showToast('Error!','Entered amount should be greater than 0','error');
+                return;
+            }
+            totalSplit += element.newAmount;
+        }
+		totalSplit = totalSplit.toFixed(2);
+        if(mainReportInstance.objInboundReport.Amount__c !=  totalSplit){
+            helper.showToast('Error!','Total split amount should be equal to actual amount','error');
+            return;
+        }
+
+        
+
+        //call backend
+        component.set("v.spinner",true);
+        var action = component.get("c.splitPayment");
+        action.setParams({
+            splitList : splitLists,
+            wrap : mainReportInstance,
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType")
+        });
+        action.setCallback(this, function(response) {
+            //component.set("v.spinner",true);
+            
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                component.set("v.inboundReportsList" ,result);
+                component.set("v.isModalOpen", false);
+                helper.showToast('Success','Process completed','success'); 
+                component.set("v.spinner",false);
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                component.set("v.isModalOpen", false);
+                // alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    helper.showToast('Error!','Something went wrong','error');
+                }
+        });
+        
+        $A.enqueueAction(action);
+
+    },
+    closeModelFilter: function(component, event, helper) {
+        
+        component.set("v.isModalFilter", false);
+        component.set("v.isFilterSelected", false);
+        component.set("v.isFilterConfirmed", false);
+        
+    },
+    openFilter: function(component, event, helper) {
+        
+        component.set("v.isModalFilter", true);
+        component.set("v.isFilterSelected", true);
+        component.set("v.isFilterConfirmed", false);
+        
+        
+    },
+    
+    selectFilterType: function(component, event, helper) {
+        
+        var selectedType = component.get("v.selectedFilter");
+        
+        if(selectedType == undefined || selectedType == ''){
+            
+            helper.showToast('Error!','Please select a filter type','error');
+            
+            return ;
+        }
+        
+        component.set("v.isFilterSelected", false);
+        component.set("v.isFilterConfirmed", true);
+        
+        
+    },
+    
+    confirmFilterType: function(component, event, helper) {
+        
+        component.set("v.spinner",true);
+        var selectedType = component.get("v.selectedFilter");
+        component.set("v.isFilter",true);
+        if(selectedType == 'date'){
+            //date validations
+            component.set("v.spinner",true);
+            
+            var startDate = component.get("v.startDate");
+            var endDate = component.get("v.endDate");
+            
+            
+            
+            if(endDate == null || endDate == undefined || endDate == '' || startDate == null || startDate == undefined || startDate == ''){
+                helper.showToast('Error!','Please enter start and end date','error');
+                component.set("v.spinner",false);
+                return ;
+            }
+            
+            var action = component.get("c.returnInboundReports");
+            action.setParams({
+                amount : 0,
+                isFilter : true,
+                filterType : 'date',
+                startCreatedDate : startDate,
+                endCreatedDate : endDate,
+                selectedRecordType : component.get("v.selectedRecordType")
+            });
+            
+            action.setCallback(this, function(response) {
+                component.set("v.spinner",true);
+                var state = response.getState();
+                if (state === "SUCCESS") {
+                    var result =response.getReturnValue();
+                    
+                    component.set("v.inboundReportsList" ,result);
+                    component.set("v.spinner",false);
+                    
+                    
+                    component.set("v.isModalFilter", false);
+                    component.set("v.isFilterSelected", false);
+                    component.set("v.isFilterConfirmed", false);
+                    
+                    
+                }
+                else if (state === "INCOMPLETE") {
+                    component.set("v.spinner",false);
+                    helper.showToast('Warning!','Process incomplete','warning'); 
+                    
+                    // alert('INCOMPLETE');
+                }
+                    else if (state === "ERROR") {
+                        component.set("v.spinner",false);
+                        var errors = response.getError();
+                        if (errors) {
+                            if (errors[0] && errors[0].message) {
+                                helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            }
+                        } else {
+                            helper.showToast('Error!','Unknown error','error');
+                        }
+                    }
+            });
+            
+            $A.enqueueAction(action);
+            
+        }else{
+            var amount = component.get("v.filterAmount");
+            
+            if(amount == undefined || amount <= 0){
+                
+                helper.showToast('Error!','Please enter a positive amount','error');
+                component.set("v.spinner",false);
+                return;
+            }
+            var action = component.get("c.returnInboundReports");
+            action.setParams({
+                amount : amount,
+                isFilter : true,
+                filterType : 'amount',
+                startCreatedDate : null,
+                endCreatedDate : null,
+                selectedRecordType : component.get("v.selectedRecordType")
+            });
+            
+            action.setCallback(this, function(response) {
+                component.set("v.spinner",true);
+                var state = response.getState();
+                if (state === "SUCCESS") {
+                    var result =response.getReturnValue();
+                    
+                    component.set("v.inboundReportsList" ,result);
+                    component.set("v.spinner",false);
+                    
+                    
+                    component.set("v.isModalFilter", false);
+                    component.set("v.isFilterSelected", false);
+                    component.set("v.isFilterConfirmed", false);
+                    
+                    
+                }
+                else if (state === "INCOMPLETE") {
+                    component.set("v.spinner",false);
+                    helper.showToast('Warning!','Process incomplete','warning'); 
+                    
+                    // alert('INCOMPLETE');
+                }
+                    else if (state === "ERROR") {
+                        component.set("v.spinner",false);
+                        var errors = response.getError();
+                        if (errors) {
+                            if (errors[0] && errors[0].message) {
+                                helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            }
+                        } else {
+                            helper.showToast('Error!','Unknown error','error');
+                        }
+                    }
+            });
+            
+            $A.enqueueAction(action);
+            
+            
+        }
+        
+        
+        
+        
+    },
+    
+    openModelReRun : function(component, event, helper) {
+        
+        
+        // Set isModalOpen attribute to true
+        var mainReportInstance = component.get("v.mainReportInstance");
+        var idx = event.target.id;
+        
+        var inboundReportsList = component.get("v.inboundReportsList");
+        for (var element of inboundReportsList) {
+            
+            if(element.objInboundReport.Id == idx){
+                
+                mainReportInstance = element;
+                break;
+            }
+            
+        }
+        
+        component.set("v.isModalOpenReRun", true);
+        
+        component.set("v.mainReportInstance2",mainReportInstance);
+        
+    },
+    
+    closeModelReRun : function(component, event, helper) {
+        // Set isModalOpen attribute to false  
+        var splitList = [];
+        component.set("v.isModalOpenReRun", false);
+        component.set("v.spinner",false);
+        component.set("v.reference1", "");
+        component.set("v.reference2", "");
+    },
+    
+    
+    reRunMatching: function(component, event, helper) {
+        
+        var mainReportInstance = component.get("v.mainReportInstance2");
+        if((component.get("v.reference1") == undefined || component.get("v.reference1")=='')&&component.get("v.selectedRecordType")=='SDS Inbound Report'){
+            helper.showToast('Error!','Please enter all values','error');
+            return;
+        }else if((component.get("v.reference1") == undefined || component.get("v.reference1")=='' || component.get("v.reference2") == undefined || component.get("v.reference2")=='')&&component.get("v.selectedRecordType")=='EWI Inbound Report'){
+            helper.showToast('Error!','Please enter all values','error');
+            return;
+        }
+       //call backend
+		component.set("v.spinner",true);
+        var action = component.get("c.matchingReRun");
+        
+        action.setParams({
+            wrap : mainReportInstance,
+            reference1 : component.get("v.reference1"),
+            reference2 : component.get("v.reference2"),
+            amount : component.get("v.filterAmount"),
+            isFilter : component.get("v.isFilter"),
+            filterType : component.get("v.selectedFilter"),
+            startCreatedDate : component.get("v.startDate"),
+            endCreatedDate : component.get("v.endDate"),
+            selectedRecordType : component.get("v.selectedRecordType")
+       });
+        
+        action.setCallback(this, function(response) {
+            
+            
+            component.set("v.spinner",true);
+            
+            var state = response.getState();
+            
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                component.set("v.inboundReportsList" ,result);
+                component.set("v.isModalOpenReRun", false);
+                component.set("v.spinner",false);
+                component.set("v.reference1", "");
+                component.set("v.reference2", "");
+                helper.showToast('Success','Process completed','success'); 
+                
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                component.set("v.isModalOpenReRun", false);
+                // alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    helper.showToast('Error!','Something went wrong','error');
+                }
+        });
+        
+        $A.enqueueAction(action);
+
+    },
+
+    onChangeRecordType: function(component, event, helper){
+        //alert(component.find('selectRecordType').get('v.value'));
+        console.log('recordType:'+component.find('selectRecordType').get('v.value'));
+        component.set("v.selectedRecordType",component.find('selectRecordType').get('v.value'));
+        //=------
+        component.set("v.checkedCount",0);
+        var action = component.get("c.returnInboundReports");
+
+        var splitList = component.get("v.splitList");
+        splitList.length =splitList.length+1;
+        component.set("v.splitList",splitList);
+
+      	action.setParams({
+             amount : 0,
+             isFilter : false,
+             filterType : '',
+             startCreatedDate : null,
+             endCreatedDate : null,
+             selectedRecordType : component.get("v.selectedRecordType")
+         });
+        component.set("v.spinner",true);
+        action.setCallback(this, function(response) {
+            component.set("v.spinner",true);
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                var result =response.getReturnValue();
+                console.log('recordtype inboundReportsList>>'+JSON.stringify(result));
+                component.set("v.inboundReportsList" ,result);
+                component.set("v.spinner",false);
+                
+            }
+            else if (state === "INCOMPLETE") {
+                component.set("v.spinner",false);
+                helper.showToast('Warning!','Process incomplete','warning'); 
+                
+                // alert('INCOMPLETE');
+            }
+                else if (state === "ERROR") {
+                    component.set("v.spinner",false);
+                    var errors = response.getError();
+                    if (errors) {
+                        if (errors[0] && errors[0].message) {
+                            helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            // component.set("v.spinner",false);
+                            
+                            //  alert("Error message: " +  errors[0].message);
+                        }
+                    } else {
+                        helper.showToast('Error!','Unknown error','error');
+                        //  component.set("v.spinner",false);
+                        
+                        //  alert("Unknown error");
+                    }
+                }
+        });
+        
+        $A.enqueueAction(action);
+    },
+
+    openModelTransfer : function(component, event, helper){
+        var selectedRecordType = component.get("v.selectedRecordType");
+        var idx = event.target.id;
+        if(selectedRecordType == "EWI Inbound Report"){
+            component.set("v.isModalTransferOpen",true);
+            component.set("v.TransferInboundId",idx);
+        }
+    },
+
+    closeTransferModel : function(component, event, helper){
+        component.set("v.isModalTransferOpen",false);
+    },
+
+    onChangeTransferPayment : function(component, event, helper){
+        component.set("v.TransferPaymentType",component.find('selectTransferType').get('v.value'));
+    },
+
+    confirmTransferPayment : function(component, event, helper){
+        var transferPaymentType = component.get("v.TransferPaymentType");
+        if(transferPaymentType == undefined || transferPaymentType == null || transferPaymentType == ""){
+            helper.showToast('!Error','Please Select Transfer Payment Type','error');
+        }else{
+            component.set("v.spinner",true);
+            component.set("v.Likedisable",true);
+            var action = component.get("c.transferPayment");
+            action.setParams({
+                selectedTransferType : transferPaymentType,
+                inboundId : component.get("v.TransferInboundId"),
+                amount : 0,
+                isFilter : false,
+                filterType : '',
+                startCreatedDate : null,
+                endCreatedDate : null,
+                selectedRecordType : component.get("v.selectedRecordType")
+            });
+            console.log('here');
+            action.setCallback(this, function(response) {
+                var state = response.getState();
+                if (state === "SUCCESS") {
+                    var result =response.getReturnValue();
+                    component.set("v.inboundReportsList" ,result);
+                    component.set("v.isModalTransferOpen",false);
+                    component.set("v.spinner",false);
+
+                }
+                else if (state === "INCOMPLETE") {
+                    component.set("v.spinner",false);
+                    helper.showToast('Warning!','Process incomplete','warning');
+                }
+                    else if (state === "ERROR") {
+                        component.set("v.spinner",false);
+                        var errors = response.getError();
+                        if (errors) {
+                            if (errors[0] && errors[0].message) {
+                                helper.showToast('Error!',"Error message: " +  errors[0].message,'error');
+                            }
+                        } else {
+                            helper.showToast('Error!','Unknown error','error');
+                        }
+                    }
+            });
+            
+            $A.enqueueAction(action);
+        }
+    },
+
+    exportReport : function(component, event, helper){
+        var allSelectedCase=component.get("v.inboundReportsList");
+        console.log('allSelectedCase length : '+allSelectedCase.length);
+        console.log('allSelectedCase : '+JSON.stringify(allSelectedCase));
+        var caseListAdd=[];
+        console.log('here');
+        for(var i=0;i < allSelectedCase.length;i++)
+        {
+            var temp={"Id":allSelectedCase[i].objInboundReport.Id==undefined?'':allSelectedCase[i].objInboundReport.Id,
+                      "Colour":allSelectedCase[i].matchedColour==undefined?'':allSelectedCase[i].matchedColour,
+                      "Matched Deposit":(allSelectedCase[i].objInboundReport.Installment__r==undefined||allSelectedCase[i].objInboundReport.Installment__r.Deposit__r==undefined)?'':allSelectedCase[i].objInboundReport.Installment__r.Deposit__r.Deposit_Account_Number__c,
+                      "Matched customer number":(allSelectedCase[i].objInboundReport.Installment__r==undefined||allSelectedCase[i].objInboundReport.Installment__r.Case__r==undefined)?'':allSelectedCase[i].objInboundReport.Installment__r.Case__r.G_Number__c,
+                      "Matched dispute ref":(allSelectedCase[i].objInboundReport.Installment__r==undefined||allSelectedCase[i].objInboundReport.Installment__r.Case__r==undefined)?'':allSelectedCase[i].objInboundReport.Installment__r.Case__r.Dispute_Reference__c,
+                      "Reference1":allSelectedCase[i].objInboundReport.Reference1__c==undefined?'':allSelectedCase[i].objInboundReport.Reference1__c,
+                      "Reference2":allSelectedCase[i].objInboundReport.Reference2__c==undefined?'':allSelectedCase[i].objInboundReport.Reference2__c,
+                      "Reference3":allSelectedCase[i].objInboundReport.Reference3__c==undefined?'':allSelectedCase[i].objInboundReport.Reference3__c,
+                      "Reference4":allSelectedCase[i].objInboundReport.Reference4__c==undefined?'':allSelectedCase[i].objInboundReport.Reference4__c,
+                      "Reference5":allSelectedCase[i].objInboundReport.Reference5__c==undefined?'':allSelectedCase[i].objInboundReport.Reference5__c,
+                      "Amount":allSelectedCase[i].objInboundReport.Amount__c==undefined?'':allSelectedCase[i].objInboundReport.Amount__c,
+                      "Deposit amount":(allSelectedCase[i].objInboundReport.Installment__r==undefined||allSelectedCase[i].objInboundReport.Installment__r.Case__r==undefined)?'':allSelectedCase[i].objInboundReport.Installment__r.Case__r.Amount_of_Disputed_Funds_Received__c,
+                      "Dispute amount":(allSelectedCase[i].objInboundReport.Installment__r==undefined||allSelectedCase[i].objInboundReport.Installment__r.Case__r==undefined)?'':allSelectedCase[i].objInboundReport.Installment__r.Case__r.Amount_of_Disputed_Funds_Remaining__c,
+                      "Account balance":(allSelectedCase[i].objInboundReport.Installment__r==undefined||allSelectedCase[i].objInboundReport.Installment__r.Case__r==undefined)?'':allSelectedCase[i].objInboundReport.Installment__r.Case__r.Total_amount_in_dispute__c,
+                      "Matched Amber Values":allSelectedCase[i].Amber_Matched_Values__c==undefined?'':allSelectedCase[i].Amber_Matched_Values__c,
+                      "File Name":allSelectedCase[i].objInboundReport.File_Name__c==undefined?'':allSelectedCase[i].objInboundReport.File_Name__c};        
+            console.log('temp : '+JSON.stringify(temp));
+            caseListAdd.push(temp);
+        }
+        console.log('caseListAdd : '+JSON.stringify(caseListAdd));
+        var csv = helper.convertListToCSV(component, caseListAdd);
+        var hiddenElement = document.createElement('a');
+        hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+        hiddenElement.target = '_self';
+        hiddenElement.download = 'Allocate Report';
+        document.body.appendChild(hiddenElement); //Required for FireFox browser
+        hiddenElement.click(); // using click() js function to download csv file
+    },
+    
+    closeModelRefund: function(component, event, helper) {
+        
+        component.set("v.isModalRefund", false);
+        
+        component.set("v.bankType", "");
+        component.set("v.nameOnAccount", "");
+        component.set("v.accountNumber", "");
+        component.set("v.sortCode", "");
+        component.set("v.bankName", "");
+        component.set("v.nameOntheAccount", "");
+        component.set("v.intBankName", "");
+        component.set("v.BIC", "");
+        component.set("v.swiftCode", "");
+        component.set("v.IBAN", "");
+        component.set("v.homeAddress", "");
+        component.set("v.refundId", "");
+        
+        
+    },
+    openRefund: function(component, event, helper) {
+        
+        component.set("v.isModalRefund", true);
+        var idx = event.target.id;
+        component.set("v.refundId", idx);
+        
+        
+        
+        
+    },
+    
+    
+})

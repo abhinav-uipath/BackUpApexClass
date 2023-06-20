@@ -1,0 +1,670 @@
+<aura:component
+   implements="flexipage:availableForAllPageTypes,force:appHostable,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction"
+   access="global"
+   controller="EWI_AllocatePaymentsController"
+   >
+   <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+   <aura:attribute name="inboundReportsList" type="List" />
+   <aura:attribute name="checkedCount" type="Integer" />
+   <aura:attribute name="spinner" type="boolean" default="true"/>
+   <aura:attribute name="disable" type="boolean" default="true"/>
+   <aura:attribute name="isModalOpen" type="boolean" default="false"/>
+   <aura:attribute name="isModalOpenforRET" type="boolean" default="false"/>
+   <aura:attribute name="isAllocateConfirmModelOpen" type="boolean" default="false"/>
+   <aura:attribute name="isSearchResultAvailable" type="boolean" default="false"/>
+   <aura:attribute name="searchText" type="String" default=""/>
+   <aura:attribute name="insertedDate" type="Date" default=""/>
+   <aura:attribute name="installmentList" type="List"/>
+   <aura:attribute name="inboundReportIdforSearch" type="String"/>
+   <aura:attribute name="columns" type="List"/>
+   <aura:attribute name="isModalOpenReRun" type="boolean" default="false"/>
+   <aura:attribute name="isModalTransferOpen" type="boolean" default="false"/>
+   <aura:attribute name="isShowColumnsEWI" type="boolean" default="false"/>
+   <aura:attribute name="newPaymentsList" type="List" />
+   <aura:attribute name = "splitList" type="EWI_AllocatePaymentsController.SplitReportWrapper[]"/>
+   <aura:attribute name = "mainReportInstance" type="EWI_AllocatePaymentsController.InboundReportWrapper"/>
+   <aura:attribute name = "mainReportInstance2" type="EWI_AllocatePaymentsController.InboundReportWrapper"/>
+   <!--  <aura:handler event="aura:waiting" action="{!c.showSpinner}"/>
+      <aura:handler event="aura:doneWaiting" action="{!c.hideSpinner}"/>-->
+   <aura:attribute name="isModalFilter" type="boolean" default="false"/>
+   <aura:attribute name="isFilter" type="boolean" default="false"/>
+   <aura:attribute name="options" type="List" default="[
+      {'label': 'Amount', 'value': 'amount'},
+      {'label': 'Created Date', 'value': 'date'}
+      ]"/>
+   <aura:attribute name="selectedFilter" type="String" default=""/>
+   <aura:attribute name="isFilterSelected" type="boolean" default="false"/>
+   <aura:attribute name="isFilterConfirmed" type="boolean" default="false"/>
+   <aura:attribute name="startDate" type="Date" />
+   <aura:attribute name="endDate" type="Date" />
+   <aura:attribute name="filterAmount" type="Decimal"/>
+   <aura:attribute name="reference1" type="String" default=""/>
+   <aura:attribute name="reference2" type="String" default=""/>
+   <aura:attribute name="selectedRecordType" type="String" default=""/>
+   <aura:attribute name="TransferPaymentType" type="String" default=""/>
+   <aura:attribute name="TransferInboundId" type="String" default=""/>
+   <aura:attribute name="currentId" type="String" default=""/>
+    <aura:attribute name="payee" type="String" default=""/> 
+    
+    
+    <aura:attribute name="isModalRefund" type="Boolean" default="false"/>
+    
+    <aura:attribute name="bankType" type="String" default=""/>
+    
+    <aura:attribute name="nameOnAccount" type="String" default=""/>
+    <aura:attribute name="accountNumber" type="String" default=""/>
+    <aura:attribute name="sortCode" type="String" default=""/>
+    <aura:attribute name="bankName" type="String" default=""/>
+    
+    <aura:attribute name="nameOntheAccount" type="String" default=""/>
+    <aura:attribute name="intBankName" type="String" default=""/>
+    <aura:attribute name="BIC" type="String" default=""/>
+    <aura:attribute name="swiftCode" type="String" default=""/>
+    <aura:attribute name="IBAN" type="String" default=""/>
+    <aura:attribute name="homeAddress" type="String" default=""/>
+    <aura:attribute name="refundId" type="String" default=""/>
+    <aura:attribute name="Likedisable" type="Boolean" default="false"/>
+
+
+   <!--loading spinner start--> 
+   <aura:if isTrue="{!v.spinner}">
+      <div class="exampleHolder">
+         <lightning:spinner style="position: fixed;" alternativeText="Loading" size="large" />
+      </div>
+   </aura:if>
+   <!-- Loading spinner end--> 
+    
+   <aura:if isTrue="{!v.isModalRefund}">
+      <!-- Modal/Popup Box starts here-->
+      <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+         <div class="slds-modal__container">
+            <!-- Modal/Popup Box Header Starts here-->
+            <header class="slds-modal__header">
+               <lightning:buttonIcon iconName="utility:close"
+                  onclick="{! c.closeModelRefund }"
+                  alternativeText="close"
+                  variant="bare-inverse"
+                  class="slds-modal__close"/>
+               <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Bank details</h2>
+            </header>
+            <!--Modal/Popup Box Body Starts here-->
+            <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+               
+                  <lightning:select name="selectItem" label="Select an item" value="{!v.bankType}">
+                    <option value="">None</option>
+                    <option value="UK">UK</option>
+                    <option value="International">International</option>
+                  </lightning:select>
+                   
+                   <aura:if isTrue="{!v.bankType == 'UK'}">
+                       
+                       <lightning:input label="Name on account" placeholder="type here..." value="{!v.nameOnAccount}"/>
+                       <lightning:input label="Account number" placeholder="type here..." value="{!v.accountNumber}"/>
+                       <lightning:input label="Sort code" placeholder="type here..." value="{!v.sortCode}"/>
+                       <lightning:input label="Bank name" placeholder="type here..." value="{!v.bankName}"/>
+                       
+                       
+                      <div style="float: right;">
+                         <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeModelRefund}"/>
+                         <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"   value = "Submit" onclick="{! c.refund}"/>
+                      </div>
+                       
+                   </aura:if>
+                   <aura:if isTrue="{!v.bankType == 'International'}">
+                       
+                       <lightning:input label="Name on the account" placeholder="type here..." value="{!v.nameOntheAccount}"/>
+                       <lightning:input label="Bank name" placeholder="type here..." value="{!v.intBankName}"/>
+                       <lightning:input label="Bank identification code" placeholder="type here..." value="{!v.BIC}"/>
+                       <lightning:input label="Swift code" placeholder="type here..." value="{!v.swiftCode}"/>
+                       <lightning:input label="IBAN or account" placeholder="type here..." value="{!v.IBAN}"/>
+                       <lightning:input label="Beneficiary home address" placeholder="type here..." value="{!v.homeAddress}"/>
+                       
+                       
+                       
+                       <div style="float: right;">
+                         <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeModelRefund}"/>
+                         <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Submit" onclick="{! c.refund}"/>
+                      </div>
+                   </aura:if>
+                   
+                  
+               
+               
+            </div>
+         </div>
+      </section>
+      <div class="slds-backdrop slds-backdrop_open"></div>
+   </aura:if> 
+    
+    
+    
+    
+   <aura:if isTrue="{!v.isModalFilter}">
+      <!-- Modal/Popup Box starts here-->
+      <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+         <div class="slds-modal__container">
+            <!-- Modal/Popup Box Header Starts here-->
+            <header class="slds-modal__header">
+               <lightning:buttonIcon iconName="utility:close"
+                  onclick="{! c.closeModelFilter }"
+                  alternativeText="close"
+                  variant="bare-inverse"
+                  class="slds-modal__close"/>
+               <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Filter records</h2>
+            </header>
+            <!--Modal/Popup Box Body Starts here-->
+            <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+               <aura:if isTrue="{!v.isFilterSelected}">
+                  <div class="form-group">
+                     <!--Lightning radio group component-->
+                     <lightning:radioGroup name="radioGroup"
+                        label="Please select filter type"
+                        required="false"
+                        options="{!v.options}"
+                        value="{!v.selectedFilter}"
+                        type="radio"/>
+                  </div>
+                  <div style="float: right;">
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeModelFilter}"/>
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Next" onclick="{! c.selectFilterType}"/>
+                  </div>
+               </aura:if>
+               <aura:if isTrue="{!v.isFilterConfirmed}">
+                  <div class="form-group">
+                     <aura:if isTrue="{!v.selectedFilter == 'amount'}">
+                        <ui:inputCurrency aura:id="amount"  value="{!v.filterAmount}"  placeholder="Enter amount"/>
+                     </aura:if>
+                     <aura:if isTrue="{!v.selectedFilter == 'date'}">
+                        <table>
+                           <tr>
+                              <td>
+                                 <ui:inputDate aura:id="EndDateField" value="{!v.startDate}" displayDatePicker="true" />
+                              </td>
+                              <td>
+                                 <ui:inputDate aura:id="EndDateField" value="{!v.endDate}" displayDatePicker="true" />
+                              </td>
+                           </tr>
+                        </table>
+                     </aura:if>
+                  </div>
+                  <div style="float: right;">
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeModelFilter}"/>
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Next" onclick="{! c.confirmFilterType}"/>
+                  </div>
+               </aura:if>
+            </div>
+         </div>
+      </section>
+      <div class="slds-backdrop slds-backdrop_open"></div>
+   </aura:if>
+   <div class= "">
+      <aura:if isTrue="{!v.isModalOpen}">
+         <!-- Modal/Popup Box starts here-->
+         <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+               <!-- Modal/Popup Box Header Starts here-->
+               <header class="slds-modal__header">
+                  <lightning:buttonIcon iconName="utility:close"
+                     onclick="{! c.closeModel }"
+                     alternativeText="close"
+                     variant="bare-inverse"
+                     class="slds-modal__close"/>
+                  <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Split Payment</h2>
+               </header>
+               <!--Modal/Popup Box Body Starts here-->
+               <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                  <table>
+                     <aura:iteration items="{!v.splitList}" var="obj" indexVar="rowIndex">
+                        <tr>
+                           <td>
+                              <ui:inputText  value="{!obj.reference2}"  placeholder="reference1"/>
+                           </td>
+                           <td>
+                              <ui:inputText  value="{!obj.reference1}"  placeholder="reference2"/>
+                           </td>
+                           <td>
+                              <ui:inputCurrency aura:id="amount"  value="{!obj.newAmount}"  placeholder="Enter new amount"/>
+                           </td>
+                           <aura:if isTrue="{!equals(v.splitList.length,rowIndex+1)}">
+                              <td>
+                                 <lightning:buttonIcon class="icon_add" iconName="utility:add" variant="bare"  onclick="{!c.addSplit}" alternativeText="add" />
+                              </td>
+                           </aura:if>
+                           <aura:if isTrue="{!notequals(v.splitList.length,rowIndex+1)}">
+                              <td>
+                                 <lightning:buttonIcon class="icon_remove" iconName="utility:ban" variant="bare"  onclick="{!c.removeSplit}" alternativeText="remove" value="{!rowIndex}" />
+                              </td>
+                           </aura:if>
+                        </tr>
+                     </aura:iteration>
+                  </table>
+                  <div style="float: right;">
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeModel}"/>
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Split" onclick="{! c.splitReport}"/>
+                  </div>
+               </div>
+            </div>
+         </section>
+         <div class="slds-backdrop slds-backdrop_open"></div>
+      </aura:if>
+      <aura:if isTrue="{!v.isModalOpenReRun}">
+         <!-- Modal/Popup Box starts here-->
+         <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+               <!-- Modal/Popup Box Header Starts here-->
+               <header class="slds-modal__header">
+                  <lightning:buttonIcon iconName="utility:close"
+                     onclick="{! c.closeModel }"
+                     alternativeText="close"
+                     variant="bare-inverse"
+                     class="slds-modal__close"/>
+                  <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Re-run matching</h2>
+               </header>
+               <!--Modal/Popup Box Body Starts here-->
+               <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                  <ui:inputText  value="{!v.reference1}"  placeholder="reference1"/>
+                  <ui:inputText  value="{!v.reference2}"  placeholder="reference2"/>
+                  <div style="float: right;">
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeModelReRun}"/>
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Re-run matching" onclick="{! c.reRunMatching}"/>
+                  </div>
+               </div>
+            </div>
+         </section>
+         <div class="slds-backdrop slds-backdrop_open"></div>
+      </aura:if>
+      <!--Transfer Modal-->
+      <aura:if isTrue="{!v.isModalTransferOpen}">
+         <!-- Modal/Popup Box starts here-->
+         <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+               <!-- Modal/Popup Box Header Starts here-->
+               <header class="slds-modal__header">
+                  <lightning:buttonIcon iconName="utility:close"
+                     onclick="{! c.closeModel }"
+                     alternativeText="close"
+                     variant="bare-inverse"
+                     class="slds-modal__close"/>
+                  <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Transfer Payment</h2>
+               </header>
+               <!--Modal/Popup Box Body Starts here-->
+               <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                  <lightning:select aura:id="selectTransferType" name="select" label="Transfer" onchange="{!c.onChangeTransferPayment}">
+                     <option value="">choose one...</option>
+                     <option value="Transfer to Custodial">Transfer to Custodial</option>
+                     <option value="Transfer to office account">Transfer to office account</option>
+                  </lightning:select>
+                  <div style="float: right;">
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeTransferModel}"/>
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Confirm" disabled="{!v.Likedisable}" onclick="{! c.confirmTransferPayment}"/>
+                  </div>
+               </div>
+            </div>
+         </section>
+         <div class="slds-backdrop slds-backdrop_open"></div>
+      </aura:if>
+      <aura:if isTrue="{!v.isAllocateConfirmModelOpen}">
+         <!-- Modal/Popup Box starts here-->
+         <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+               <!-- Modal/Popup Box Header Starts here-->
+               <header class="slds-modal__header">
+                  <lightning:buttonIcon iconName="utility:close"
+                     onclick="{! c.closeAllocationConfirmModel }"
+                     alternativeText="close"
+                     variant="bare-inverse"
+                     class="slds-modal__close"/>
+                  <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Allocate Payment</h2>
+               </header>
+               <!--Modal/Popup Box Body Starts here-->
+               <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                  <div class="form-row">
+                     <div class="form-group col-md-12">
+                        <label>This amount is more than expected do you still wish to allocate it to this case?	</label>
+                     </div>
+                  </div>
+                  <div style="float: right;">
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_brand" type = "button"  value = "Allocate" onclick="{! c.onAllocateConfirm}"/>
+                     <input style= "margin-top: 5px;" class="slds-button slds-button_destructive custom" type = "button"  value = "Cancel" onclick="{! c.closeAllocationConfirmModel}"/>
+                  </div>
+               </div>
+            </div>
+         </section>
+         <div class="slds-backdrop slds-backdrop_open"></div>
+      </aura:if>
+      <lightning:card title="EWI Payment Allocation Details">
+         <!--<div style="margin-left: 15px;margin-right: 1290px;margin-bottom: 10px;">
+            <lightning:select aura:id="selectRecordType" name="select" label="Select the Records Value" onchange="{!c.onChangeRecordType}">
+               <option value="">choose one...</option>
+               <option value="SDS Inbound Report">SDS</option>
+               <option value="EWI Inbound Report">EWI</option>
+            </lightning:select>
+            </div>-->
+         <div>
+            <input class="slds-button slds-button_brand mg-left" type = "button" disabled="{!v.disable}" value = "Allocate" onclick="{! c.allocateInboundReportsJS}"/>
+            <input class="slds-button slds-button_destructive" type = "button" disabled="{!v.disable}" value = "Unallocate" onclick="{! c.unallocate}"/>
+            <input class="slds-button slds-button_brand mg-left" type = "button" value = "Select All Green" onclick="{! c.selectAllGreen}"/>
+            <input class="slds-button slds-button_destructive amberButton" type = "button" value = "Select All Amber" onclick="{! c.selectAllAmber}"/>
+            <input class="slds-button slds-button_destructive" type = "button" value = "Deselect All" onclick="{! c.deselectAll}"/>
+            <div class="slds-grid slds-gutters" style = "float:right;">
+               <div class="slds-col"><input class="slds-button slds-button_brand mg-left" type = "button" value = "Export Report" onclick="{! c.exportReport}"/></div>
+               <div class="slds-col">
+                  <lightning:icon iconName="standard:filter" alternativeText="Filter" title="Filter" onclick="{! c.openFilter}"/>
+               </div>
+            </div>
+         </div>
+         <br/>
+         <div class="slds-scrollable_x" style="height:100%;width:100%;">
+            <table class="slds-table_cell-buffer slds-table_bordered slds-table_col-bordered" aria-labelledby="element-with-table-label other-element-with-table-label">
+               <thead>
+                  <tr>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Select</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Record ID</div>
+                     </th>
+                      <th class="" scope="col">
+                        <div class="slds-truncate">Actions To Perform</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Colour</div>
+                     </th>
+                     <!--<th class="" scope="col">
+                        <div class="slds-truncate">Matched Deposit</div>
+                        </th> -->
+                      <th class="" scope="col">
+                        <div class="slds-truncate">Transaction Date</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Matched customer number</div>
+                     </th>
+                      <th class="" scope="col">
+                        <div class="slds-truncate">Matched dispute ref</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Reference1</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Reference2</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Reference3</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Reference4</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Reference5</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Amount</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Deposit amount</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Dispute amount</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Account balance</div>
+                     </th>
+                     <th class="" scope="col">
+                        <div class="slds-truncate">Matched Amber Values</div>
+                     </th>
+                     
+                     <th class="" scope="col">
+                        <div class="slds-truncate">File Name</div>
+                     </th>
+                     <!--<th class="" scope="col">
+                        <div class="slds-truncate">Actions To Perform</div>
+                     </th>-->
+                  </tr>
+               </thead>
+               <tbody>
+                  <aura:iteration items="{!v.inboundReportsList}" var="obj">
+                     <tr class="slds-hint-parent">
+                        <td>
+                           <ui:inputCheckbox name="{!obj.objInboundReport.Id}" class="slds-checkbox" change="{!c.onCheck}" value="{!obj.isSelected}" />
+                        </td>
+                        <!--<td>{!obj.objInboundReport.Id}</td>-->
+                        <td><a href="{!'/one/one.app?#/sObject/'+ obj.objInboundReport.Id + '/view'}" target="_blank" tabindex="-1">{!obj.objInboundReport.Name}</a></td>
+                         <td>
+                           <aura:if isTrue="{!or(obj.matchedColour == 'Green',obj.matchedColour=='Amber')}">
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Red" onclick="{! c.unallocate}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Gray" onclick="{! c.unallocateGray}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Allocate" onclick="{! c.allocateInboundReportsJS}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Refund" onclick="{! c.openRefund}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Split" onclick="{!c.openModel}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Re-run" onclick="{!c.openModelReRun}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Transfer" onclick="{!c.openModelTransfer}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                           <aura:if isTrue="{!obj.matchedColour == 'Red'}">
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Gray" onclick="{! c.unallocateGray}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Refund" onclick="{! c.openRefund}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Split" onclick="{!c.openModel}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Re-run" onclick="{!c.openModelReRun}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Transfer" onclick="{!c.openModelTransfer}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                           <aura:if isTrue="{!obj.matchedColour == 'Blue'}">
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Red" onclick="{! c.unallocate}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                           <aura:if isTrue="{!obj.matchedColour == 'Gray'}">
+                              <input class="slds-button slds-button_destructive search" type = "button" value = "Search" onclick="{! c.SearchPopup}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                        </td>
+                        <td class="{!obj.matchedColour}"></td>
+                          <td>{!obj.objInboundReport.collection_date_format__c}</td>
+                        <!-- <td>{!obj.objInboundReport.Installment__r.Deposit__r.Deposit_Account_Number__c}</td> -->
+                        <td>{!obj.objInboundReport.Installment__r.Case__r.G_Number__c}</td>
+                         <td>{!obj.objInboundReport.Installment__r.Case__r.Dispute_Reference__c }</td>
+                        <td>{!obj.objInboundReport.Reference1__c}</td>
+                        <td>{!obj.objInboundReport.Reference2__c}</td>
+                        <td>{!obj.objInboundReport.Reference3__c}</td>
+                        <td>{!obj.objInboundReport.Reference4__c}</td>
+                        <td>{!obj.objInboundReport.Reference5__c}</td>
+                        <aura:if isTrue="{!obj.objInboundReport.Installment__r.Deposit__r.Amount_Received_By_Scheme__c > 0}">
+                           <td style="background-color: orange;">
+                              <lightning:formattedNumber value="{!obj.objInboundReport.Amount__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                           </td>
+                           <aura:set attribute="else">
+                              <td>
+                                 <lightning:formattedNumber value="{!obj.objInboundReport.Amount__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                              </td>
+                           </aura:set>
+                        </aura:if>
+                        <!-- <td>
+                           <aura:if isTrue="{!obj.objInboundReport.Installment__r.Deposit__r.Amount_Received_By_Scheme__c > 0}">
+                              <div style="background-color: orange;">
+                              <lightning:formattedNumber value="{!obj.objInboundReport.Amount__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                              </div>
+                              <aura:set attribute="else">
+                                 <lightning:formattedNumber value="{!obj.objInboundReport.Amount__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                              </aura:set>
+                           </aura:if>
+                           </td> -->
+                        <td>
+                           <lightning:formattedNumber value="{!obj.objInboundReport.Installment__r.Case__r.Total_Deposit__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                        </td>
+                        <td>
+                           <lightning:formattedNumber value="{!obj.objInboundReport.Installment__r.Case__r.Total_amount_in_dispute__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                        </td>
+                        <td>
+                           <lightning:formattedNumber value="{!obj.objInboundReport.Installment__r.Case__r.FinalCaseBalance__c}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/>
+                        </td>
+                        <td>{!obj.objInboundReport.Amber_Matched_Values__c}</td>
+                           
+                        <td>{!obj.objInboundReport.File_Name__c}</td>
+                        <!--<td>
+                           <aura:if isTrue="{!or(obj.matchedColour == 'Green',obj.matchedColour=='Amber')}">
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Red" onclick="{! c.unallocate}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Gray" onclick="{! c.unallocateGray}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Allocate" onclick="{! c.allocateInboundReportsJS}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Refund" onclick="{! c.refund}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Split" onclick="{!c.openModel}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Re-run" onclick="{!c.openModelReRun}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Transfer" onclick="{!c.openModelTransfer}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                           <aura:if isTrue="{!obj.matchedColour == 'Red'}">
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Gray" onclick="{! c.unallocateGray}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Refund" onclick="{! c.refund}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Split" onclick="{!c.openModel}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Re-run" onclick="{!c.openModelReRun}" id="{!obj.objInboundReport.Id}"/>
+                              <input class="slds-button slds-button_brand" type = "button" value = "Transfer" onclick="{!c.openModelTransfer}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                           <aura:if isTrue="{!obj.matchedColour == 'Blue'}">
+                              <input class="slds-button slds-button_destructive" type = "button" value = "Move to Red" onclick="{! c.unallocate}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                           <aura:if isTrue="{!obj.matchedColour == 'Gray'}">
+                              <input class="slds-button slds-button_destructive search" type = "button" value = "Search" onclick="{! c.SearchPopup}" id="{!obj.objInboundReport.Id}"/>
+                           </aura:if>
+                        </td>-->
+                     </tr>
+                  </aura:iteration>
+               </tbody>
+            </table>
+         </div>
+      </lightning:card>
+      <aura:if isTrue="{!v.isModalOpenforRET}">
+             
+            <!-- Modal/Popup Box starts here-->
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open slds-modal_small">
+                <div class="slds-modal__container">
+                    <!-- Modal/Popup Box Header Starts here-->
+                    <header class="slds-modal__header">
+                        <lightning:buttonIcon iconName="utility:close"
+                                              onclick="{! c.closeModelforRET }"
+                                              alternativeText="close"
+                                              variant="bare-inverse"
+                                              class="slds-modal__close"/>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Search Installment</h2>
+                    </header>
+                    <!--Modal/Popup Box Body Starts here-->
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                     <aura:if isTrue="{!v.spinnerInModal}">
+      <div class="modalSPinner">
+         <lightning:spinner alternativeText="Loading" size="large" />
+      </div>
+   </aura:if>   
+<div class="slds-form-element slds-lookup" data-select="single">
+    <div class="slds-form-element__control">
+        <div style="font-size: var(--lwc-fontSize7,1.25rem);line-height: var(--lwc-lineHeightHeading,1.25);margin-left:42%;">
+            {!v.payee}
+        </div>
+        
+        <div class="slds-input-has-icon slds-input-has-icon--right">
+            <ui:inputDate aura:id="expdate" label="Date"  value="{!v.insertedDate}" displayDatePicker="true" />         
+        </div>
+        <div class="slds-input-has-icon slds-input-has-icon--right slds-p-top_medium">  
+            <lightning:button variant="brand" label="Search" title="Search" onclick="{! c.Search }" />
+
+        </div>
+    </div>
+</div>
+                        <aura:if isTrue="{!v.isSearchResultAvailable}"> 
+                             <table class="slds-table_cell-buffer slds-table_bordered slds-table_col-bordered" aria-labelledby="element-with-table-label other-element-with-table-label">
+            <thead>
+               <tr>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Installment ID</div>
+                  </th>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Amount</div>
+                  </th>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Contact Name</div>
+                  </th>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Dispute REf Number</div>
+                  </th>
+                   <th class="" scope="col">
+                     <div class="slds-truncate">Bank Account Number</div>
+                  </th>
+                     <th class="" scope="col">
+                     <div class="slds-truncate">Actions To Perform</div>
+                  </th>
+               </tr>
+            </thead>
+            <tbody>
+               <aura:iteration items="{!v.installmentList}" var="obj">
+                  <tr class="slds-hint-parent">
+                     
+                     <!--<td>{!obj.objInboundReport.Id}</td>-->
+                     <td><a href="{!'/one/one.app?#/sObject/'+ obj.Id + '/view'}" target="_blank" tabindex="-1">{!obj.Name}</a></td>
+                     <td>{!obj.Amount__c}</td>
+                     <td>{!obj.Contact__r.Name}</td>
+                      <td>{!obj.Case__r.Dispute_Reference__c}</td>
+                     <td>{!obj.Bank_Account_Number__c}</td>
+                  
+                     <td>
+                     <input class="slds-button slds-button_destructive" type = "button" value = "Reverse Payment"  onclick="{! c.submitDetails}" id="{!obj.Id}"/>      
+                     </td>
+                  </tr>
+               </aura:iteration>
+            </tbody>
+         </table>
+
+                        </aura:if>
+                        <aura:if isTrue="{!!v.isSearchResultAvailable}"> 
+                             <table class="slds-table_cell-buffer slds-table_bordered slds-table_col-bordered" aria-labelledby="element-with-table-label other-element-with-table-label">
+            <thead>
+               <tr>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Installment ID</div>
+                  </th>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Amount</div>
+                  </th>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Contact Name</div>
+                  </th>
+                  <th class="" scope="col">
+                     <div class="slds-truncate">Dispute REf Number</div>
+                  </th>
+                   <th class="" scope="col">
+                     <div class="slds-truncate">Bank Account Number</div>
+                  </th>
+                     <th class="" scope="col">
+                     <div class="slds-truncate">Actions To Perform</div>
+                  </th>
+               </tr>
+            </thead>
+            <tbody>
+               <aura:iteration items="{!v.installmentList}" var="obj">
+                  <tr class="slds-hint-parent">
+                     
+                     <!--<td>{!obj.objInboundReport.Id}</td>-->
+                     <td><a href="{!'/one/one.app?#/sObject/'+ obj.Id + '/view'}" target="_blank" tabindex="-1">{!obj.Name}</a></td>
+                     <td>{!obj.Amount__c}</td>
+                     <td>{!obj.Contact__r.Name}</td>
+                      <td>{!obj.Case__r.Dispute_Reference__c}</td>
+                     <td>{!obj.Bank_Account_Number__c}</td>
+                  
+                     <td>
+                     <input class="slds-button slds-button_destructive" type = "button" value = "Reverse Payment" disabled="{!v.Likedisable}" onclick="{! c.submitDetails}" id="{!obj.Id}"/>      
+                     </td>
+                  </tr>
+               </aura:iteration>
+            </tbody>
+         </table>
+
+                        </aura:if>
+                                   
+                    </div>
+                    <!--Modal/Popup Box Footer Starts here-->
+                    <footer class="slds-modal__footer">
+                        <lightning:button variant="neutral"
+                                          label="Cancel"
+                                          title="Cancel"
+                                          onclick="{! c.closeModelforRET }"/>
+                        <!--<lightning:button variant="brand"
+                                          label="Process Return Payment"
+                                          title="Process Return Payment"
+                                          onclick="{!c.submitDetails}"/>-->
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </aura:if>
+   </div>
+</aura:component>
